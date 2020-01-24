@@ -1,0 +1,66 @@
+digit <- zip[,1] ## the digit label
+zip.mat <- as.matrix(zip[,-1])
+
+
+X0 <- zip.mat[digit==0,]
+X1 <- zip.mat[digit==1,]
+
+# need to pool there X0,X1
+
+x <- zip.mat[digit==0 | digit==1,]
+x <- x[,-256]
+x <- x[,-240]
+x <- x[,-16]
+x <- x[,-1]
+
+
+groups <- factor(zip$V1[zip$V1==0 | zip$V1==1])
+
+fisherlda <- function(x, groups, xnew) {
+  g1 <- unique(groups)[1]
+  g2 <- unique(groups)[2]
+  #
+  m1 <- colMeans(x[groups==g1,])
+  m2 <- colMeans(x[groups==g2,])
+  S1 <- cov(x[groups==g1,])
+  S2 <- cov(x[groups==g2,])
+  n1 <- sum(groups==g1)
+  n2 <- sum(groups==g2)
+  Sp <- ((n1-1)*S1 + (n2-1)*S2)/(n1+n2-2)
+  #
+  a <- solve(Sp) %*% matrix(m1-m2,ncol=1)
+  z <- as.matrix(x) %*% a
+  midpoint <- as.vector(.5*(m1 %*% a + m2 %*% a))
+  pred <- z > midpoint
+  pred <- ifelse(pred,as.character(g1),as.character(g2))
+  ans <- list(z=z,xpred=pred,midpoint=midpoint, a=a)
+  if (!missing(xnew)) {
+    xnewpred <- (as.matrix(xnew) %*% t(a)) > midpoint
+    xnewpred <- ifelse(xnewpred,g1,g2)
+    ans$xnewpreds <- xnewpred
+  } else {
+    ans$xnewpred <- NA
+  }
+  return(ans)
+}
+lda <- fisherlda(x,groups)
+table(lda$xpred,groups)
+
+
+pred.cv <- matrix(, nrow = 20, ncol = 1)
+for (i in 1:ncol(x)) {
+  fit <- fisherlda(x[-i,], groups=groups[-i], xnew=x[i,])
+  pred.cv[i,] <- sum(unique(fit$xnewpreds))/254
+}
+
+table(pred.cv,groups)
+
+
+par(mai=rep(0.,4))
+plot(X, cex=.6, asp=1, xlim=c(-5.5, 3), ylim=c(-4, 2), pch=20,
+     axes=FALSE, col=c(1,4)[species])
+a <- lda$a[c(2,4)]
+projection_plot(X, groups=species, a, ind=NULL, lwdproj=.05,
+                density_scaling=1, shift_len=5)
+lines(c(-1,1)*a[2], -c(-1,1)*a[1], lty=2, lwd=2)
+par(op)
