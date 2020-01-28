@@ -1,0 +1,21 @@
+
+digit <- zip[,1] ## the digit label
+zip.mat <- as.matrix(zip[,-1])
+
+
+X0 <- zip.mat[digit==0,]
+X1 <- zip.mat[digit==1,]
+
+X02 = X0
+
+
+x_trans = matrix(, nrow = 16, ncol = 16)
+for (i in 1:16){
+  x_trans[i,] =  x_image[i,] - mean(x_image[i,])
+}
+
+
+ grays = rgb(red = 0:255/255, blue = 0:255/255, green = 0:255/255) 
+ 
+ image(x_image, col = grays)
+ image(x_trans, col = grays)
